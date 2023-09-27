@@ -1,0 +1,139 @@
+GUIDE POUR HACKER LE CLIENT PYTHON OPEN-SOURCE
+==============================================
+
+Le client python open-source disponible dans toutes les bonnes bibliothèques 
+repose sur le paquet twisted.  Twisted contient déjà du  code qui gère le 
+protocole telnet ainsi que les netstrings (bien), mais ce code nécessite une 
+petite... prise en main (moins bien).
+
+Twisted distingue deux types d'objets : 
+    - les Protocoles
+    - les Transports
+
+Un protocole réagit à des évènements qui viennent de l'extérieur : établissement
+d'une connection, réception de données, perte de la connection. 
+
+Un transport sert à... envoyer des octets vers le monde extérieur. 
+
+Cette dichotomie permet au même protocole de fonctionner avec des transports
+différents, et au même transport de servir à des protocoles différents.
+
+
+            ┌─────────────────────┐
+            ▼                     │
+      ┌───────────┐         ┌─────┴─────┐             ┌─────────────────┐
+      │ Protocole │         │ Transport │◄-----------▶│ monde extérieur │
+      └─────┬─────┘         └───────────┘             └─────────────────┘
+            │                     ▲
+            └─────────────────────┘      
+
+
+On peut consulter la documentation officielle qui décrit les interfaces de ces
+deux composants :
+
+https://twistedmatrix.com/documents/current/api/twisted.internet.interfaces.IProtocol.html
+https://twistedmatrix.com/documents/current/api/twisted.internet.interfaces.ITransport.html
+
+
+Voici un exemple minimal de protocole :
+
+=================================BEGIN EXAMPLE==================================
+from twisted.internet import protocol
+
+class SampleProtocol(protocol.Protocol):
+    def dataReceived(self, data):
+        """
+        Invoqué lorsque les données <data> arrivent depuis le transport.
+        """
+        pass
+
+    def connectionMade(self):
+        """
+        Invoqué lorsque la connection est établie.  Un transport est disponible
+        dans self.transport.  On peut envoyer des octets avec 
+        self.transport.write().
+        """
+        pass
+
+    def connectionLost(self, reason):
+        """
+        Invoqué lorsque la connection est terminée.
+        """
+        pass
+==================================END EXAMPLE===================================
+
+
+Le client open-source python fonctionne de cette façon-là.  La méthode
+connectionMade() de sa classe TelnetClient lance une négociation d'options
+telnet avec le serveur.  Sa méthode dataReceived() affiche à l'écran les
+données reçues.  Pour envoyer les charactères saisis au serveur, il utilise la
+méthode write() du transport.
+
+Mais en fait, il y a une petite subtilité. 
+
+Si on observe attentivement la ClientFactory, on voit que le protocole lancé
+est... un TelnetTransport (!).  En fait, ceci utilise une technique qui vaut le
+coup d'être comprise : le TelnetTransport est À LA FOIS un protocole et un
+transport.  Il reçoit en argument un AUTRE protocole  (qu'on va dire "interne").
+
+
+      ┌──────────────┐           ┌──────────────┐
+      ▼              │           │              │
+┌───────────┐        │           ▼        ┌─────┴─────┐                  
+│ Protocole │  ┌─────┴─────┬───────────┐  │ Transport │      ┌─────────────────┐
+│           │  │ Transport ╎ Protocole │  │           │ <╌╌> │ monde extérieur │
+│  interne  │  └───────────┴─────┬─────┘  │  externe  │      └─────────────────┘
+└─────┬─────┘        ▲           │        └───────────┘           
+      │              │           │              ▲
+      └──────────────┘           └──────────────┘
+
+
+Vis-à-vis du monde extérieur, il se comporte comme un protocole, auquel est
+fourni un transport (qu'on va dire "externe", probablement un TCPTransport).
+Mais les données reçues, après traitement, sont relayées au protocole interne.
+Vis-à-vis du protocole interne, le TelnetTransport se comporte bien comme un
+transport.  Lorsque le protocole interne veut émetre des données, il invoque la
+méthode write() de son transport (qui est donc le TelnetTransport).  Ceci-ci
+effectue un encodage, puis relaye les données au  transport externe.
+
+Cette technique est utile, car elle permet de réaliser des "couches".  En gros,
+elle sert à implémenter la couche TELNET décrite dans le document de 
+spécification.
+
+Pour notre part, on peut se servir de cette même technique pour faire :
+    - un hybride protocole-transport qui réalise la couche "netstrings"
+    - un hybride protocole-transport qui réalise la couche "chiffrement"
+
+
+
+APPLICATION : GESTION DE LA "COUCHE NETSTRINGS"
+-----------------------------------------------
+Cette section décrit comment modifier le client open-source pour qu'il gère
+le protocole intermédiaire "TELNET OVER NETSTRING" (décrit dans le 
+"hacker's guide").
+
+Twisted fournit un protocole tout fait pour recevoir et envoyer des
+netstrings :
+
+        https://twistedmatrix.com/documents/current/api/twisted.protocols.basic.NetstringReceiver.html
+
+La logique qui est à l'oeuvre dans sa conception voudrait qu'on construise
+une sous-classe de NetstringReceiver, en fournissant une méthode
+stringReceived() qui sera invoquée chaque fois qu'une netstring est bien
+reçue. Mais il faudrait alors envoyer les données au TelnetTransport, et
+donc le plus simple c'est de faire un hybride protocole-transport qui gère
+la "couche netstring".
+
+Un tel code figure dans le fichier netstrings.py
+
+Pour l'utiliser, il faut modifier un peu le client open-source.
+
+================================ BEGIN PATCH ===============================
++ from netstrings import NetstringWrapperProtocol
+    
+- self.protocol = TelnetTransport(TelnetClient)
++ self.protocol = NetstringWrapperProtocol(TelnetTransport, TelnetClient)
+    
+- reactor.connectTCP('crypta.sfpn.net', 23, factory)
++ reactor.connectTCP('crypta.sfpn.net', 6023, factory)
+================================= END PATCH ================================

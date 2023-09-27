@@ -1,0 +1,40 @@
+OK, celui-ci est sensiblement plus compliqué que les deux autres.
+
+>>> conseil poste informatique #1
+(Nous espérons que le conseil précédent ne vous a pas trop démoralisé).
+
+>>> conseil poste informatique #1
+L'idée de base est simple.  On a C == M**e mod N et C' == (M + 1)**e mod N.
+On regarde les deux polynôme P(X) = X**e - C et Q(X) = (X+1)**e - C'.  Ces deux
+polynômes admettent tous les deux M comme racine modulo N, donc ils sont tous les
+deux divisibles par (X - M).  Par conséquent, calculer le PGCD de P et Q devrait
+renvoyer le polynôme X - M, et donc révéler M.
+
+>>> conseil poste informatique #1
+Le problème, c'est que les coefficients (et la variable) de ces polynômes sont des
+entiers modulo N, et que N n'est pas premier (sa factorisation est, en outre,
+inconnue).  Or, le PGCD des polynômes n'est pas clairement défini dans ce cas,
+et la plupart des logiciels de calcul formel vont refuser de faire le calcul.
+Ceci a lieu parce que dans l'algorithme d'Euclide, il faut calculer la division
+Euclidienne d'un polynôme par un autre, et pour cela il faut être capable de calculer
+l'inverse du coefficient de tête du diviseur, qui est un entier modulo N.  Ceci
+est toujours possible lorsque N est premier, mais ça peut échouer si N est composite.
+
+>>> conseil poste informatique #1
+(Le fond de l'affaire, c'est que l'ensemble des entiers modulo N n'est pas un corps).
+
+>>> conseil poste informatique #1
+La bonne nouvelle, c'est qu'on s'en fiche complètement !  En effet, si jamais on
+trouve un entier a non inversible modulo N, alors on a PGCD(N, a) != 1, et donc
+on a en fait trouvé... un diviseur non-trivial de N.  Autrement dit, on a factorisé
+N: échec et mat.
+
+>>> conseil poste informatique #1
+On peut donc lancer le calcul du PGCD des deux polynôme les yeux fermés en étant
+quasiment sûr qu'il n'y aura pas de problème.  Au pire... on casse la clef secrète.
+
+>>> conseil poste informatique #1
+L'inconvénient majeur, c'est qu'il faut programmer soi-même tout ou partie de la
+machinerie nécessaire au calcul du PGCD de deux polynômes.
+
+>>> conseil poste informatique #1

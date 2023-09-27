@@ -1,0 +1,162 @@
+Vous êtes dans le rayon "Python" de la bibliothèque MIR.
+
+Ici se trouve un ouvrage intitulé "les entiers en python".
+Ici se trouve un ouvrage intitulé "les chaines en python".
+Ici se trouve un ouvrage intitulé "le hachage en python".
+
+>>> lire "les entiers en python"
+Le mot PYTHON" est ambigü. Cela pourrait être :
+ - ouvrage intitulé "les entiers en python"
+ - ouvrage intitulé "les chaines en python"
+ - ouvrage intitulé "le hachage en python"
+
+>>> lire les entiers
+En python, les entiers (c.a.d. les objets de type int()) ne sont pas limités en
+taille. De manière interne, une librairie multiprécision est utilisée pour
+effectuer les calculs. Cette note détaille quelques opérations et conversions 
+intéressantes. 
+
+
+DIVISION
+--------
+
+En python 3.x, la division "/" renvoie toujours un float(), même si la division
+"tombe juste". Pour obtenir le quotient de la division euclidienne, utiliser 
+l'opérateur "//" qui renvoie, lui, un entier.
+
+>>> 5 / 3
+1.6666666666666667
+>>> 5 // 3
+1
+>>> 8 / 2
+4.0
+>>> 8 // 2
+4
+
+Le reste de la division est obtenu avec "%".
+>>> 7 % 4
+3
+
+Notez que ceci renvoie toujours un nombre positif.
+>>> -5 % 11
+6
+
+Pour calculer le quotient et le reste à la fois, on peut utiliser divmod(). 
+Ça peut être programmé de manière plus efficace que les deux opération
+séparément.
+>>> divmod(1337, 42)
+(31, 35)
+>>> 13 * 42 + 35
+1337
+
+
+TAILLE DES ENTIERS
+------------------
+
+>>> i = 1337
+>>> i.bit_length()
+11
+
+
+CONVERSION int() <---> str()
+----------------------------
+
+Il est très facile de convertir des nombres vers des chaines de charactères.
+>>> x = 42
+>>> str(x)
+'42'
+
+Dans l'autre sens, ce n'est pas beaucoup plus compliqué.
+>>> y = "1337"
+>>> int(y)
+1337
+
+Des fonctions prédéfinies permettent de convertir un nombre en représentation
+binaire ou héxadécimale.
+>>> bin(x)
+'0b101010'
+>>> hex(x)
+'0x2a'
+
+Ces fonctions ajoutent un préfixe qui indique la base dans laquelle est exprimé
+le nombre qui suit (base 2 ou base 16). Parfois ce préfixe est embêtant. On peut
+toujours le retirer de la chaine de charactères obtenue, puisqu'il est toujours
+de taille 2. Cependant, dans le cas de l'hexadécimal, on a accès à d'autres 
+options.
+
+En utilisant le formatage des chaines, on peut spécifier le nombre de chiffres,
+et se passer du préfixe.
+>>> '{0:08x}'.format(42)
+'0000002a'
+
+Ceci a l'inconvénient qu'i faut connaître à l'avance le nombre de chiffres du
+résulat --- dans le contecte de la cryptographie où les clefs et les données 
+sont de tailles donnues ça pose rarement problème.
+
+Convertir une chaine de caractères contenant de l'hexadecimal en un entier est
+facile. Il suffit de spécifier la base. Le préfixe "0x" est optionnel, et la 
+casse n'est pas prise en compte.
+
+>>> int('C01DC0FFE', base=16)
+>>> int('0xC01DC0FFE', base=16)
+>>> int('0xc01dc0ffe', base=16)
+51570806782
+
+
+CONVERSION int() <---> bytes(), méthode directe
+-----------------------------------------------
+
+En mémoire, un nombre est représenté par une séquence d'octets (comme toutes les
+autres données), et c'est parfois pratique de pouvoir y accéder.
+
+Plusieurs méthodes sont possibles. D'abord, Python fournit un accès direct (ne
+pas hésiter à consulter la doc).
+
+>>> x = int('0x1122334455667788', base=16)
+>>> x.to_bytes(length=8, byteorder='big')
+b'\x11"3DUfw\x88'
+>>> int.from_bytes(b'\x11"3DUfw\x88', byteorder='big')
+1234605616436508552
+>>> hex(1234605616436508552)
+'0x1122334455667788'
+
+Encore une fois, il faut être capable d'annoncer à l'avance la taille du
+résultat.
+
+
+CONVERSION int() <---> bytes(), méthode indirecte
+-------------------------------------------------
+
+Mais sinon, il y a un moyen, plus indirect, mais parfois utile. Les fonctions
+base64.b16encode et base64.b16decode convertissent des bytes() en hexadécimal.
+
+
+>>> import base64
+>>> base64.b16decode('DEADBEEF0000CAFECAFE')
+b'\xde\xad\xbe\xef\x00\x00\xca\xfe\xca\xfe'
+
+>>> base64.b16encode(b'\x11"3DUfw\x88')
+b'1122334455667788'
+
+Le décodage accepte indifférement des str() ou des bytes() en entrée, mais
+l'encodage produit des bytes(). Il faut fournir un nombre PAIR de signes en 
+entrée. Attention, par défaut le décodage n'accepte pas les minuscules. Pour 
+autoriser les minuscules, il faut rajouter un argument. Et attention, pas de 
+préfixe "0x".
+   
+>>> base64.b16decode('DeadBeef0000CafeCafe', casefold=True)
+
+Tout ceci permet des conversions int() --> hex --> bytes(). Pour reprendre ce
+qui était au-dessus :
+>>> i = int("0x1122334455667788", base=16)
+>>> h = "{0:016x}".format(i)
+>>> base64.b16decode(h)
+b'\x11"3DUfw\x88'
+
+Dans l'autre sens :
+>>> b = b'\x11"3DUfw\x88'
+>>> h = base64.b16encode(b)
+>>> int(h, base=16)
+1234605616436508552
+
+REMARQUE : ceci réalise la conversion avec l'ordre "big-endian".

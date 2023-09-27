@@ -1,0 +1,20 @@
+Subject: Évacuation
+To: Yanny Dicot <yanny.dicot@ufr-info-p6.jussieu.fr>
+From: Mohab Safey El Din <mohab.safey@lip6.fr>
+Message-ID: <e27a27d2-0d3b-e5fb-3dda-aa39b6499eda@lip6.fr>
+Date: Tue, 7 Sep 2021 10:13:06 +0200
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Antivirus-Status: Clean
+User-Agent: BuggyMailClient/1.3.13
+X-Signature-Algorithm: SDSA
+X-Hash-Algorithm: SHA256
+X-Hash: 10d6e10de85642a6e87d4cd4b3924c254bdbed52934c502a1626cbed2b17aa1d
+X-Signature: 3046022100FC99D899CCF10FDD1B433B9D7DBC71A28BA9ECF9BAF4F05076EB736B8F746096022100EEDF58CD8080070434F04EC2C2C12F0EA6F89A5EB240A63D892881AAB5672492
+
+Bonjour Yanny,
+As-tu bien prévenu les étudiants qu'ils doivent quitter le campus ?
+Merci,
+---
+Mohab

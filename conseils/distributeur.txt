@@ -1,0 +1,41 @@
+conseil distributeur
+Le problème consiste à trouver une collision sur une fonction de hachage dont
+la sortie fait 56 bits.  Avec le paradoxe des anniversaires, on peut estimer
+qu'on va s'en tirer avec environ 2**28 évaluations de la fonction de hachage.
+
+>>> conseil distributeur
+Une stratégie naïve consisterait à faire : 
+1. [Initialisation] Initialiser un dictionnaire D (vide).
+2. [Nouvel essai]   Générer aléatoirement une chaine de bits x du bon format;
+                    calculer son empreinte h.3. [Collision ?]    Si h est déjà une clef dans D et que D[h] != x, alors 
+                    Renvoyer Collision(D[h], x) et stopper l'algorithme.
+3. [Stockage]       Stocker D[h] = x, puis retourner à l'étape 2.
+
+>>> conseil distributeur
+L'inconvénient de cette stratégie naïve, c'est qu'elle demande le stockage d'au
+moins 8Go, et en fait sûrement davantage (les dictionnaires ont tous un surcoût).
+En pratique, pour trouver la collision de cette sorte, il y a un algorithme qui
+ne nécesite PAS de mémoire et qui est aussi rapide : c'est la ``méthode rho''.
+En fait, cette appélation désigne des algorithmes de détection de cycle (cycle-
+finding algorithms).  Ils sont bien décrits sur la page Wikipédia (anglaise) qui
+correspond.
+
+>>> conseil distributeur
+Comme d'habitude dans ce genre de situation, il vaut mieux commencer par essayer
+de produire une collision sur 32 bits, par exemple, ce qui devrait nécessiter
+environ 2**16 itérations et être instantané.  Si le code fonctionne correctement
+et fait VRAIMENT 2**16 itérations, alors on peut essayer de monter en puissance.
+En particulier, le code fait environ 2**32 itérations alors il bugué (et bien trop
+lent pour atteindre 56 bits de collision).
+
+>>> conseil distributeur
+Il faut choisir correctement la fonction qu'on itère.  En particulier, il faut
+d'une part que sa sortie commence par le nom de l'opérateur.  D'autre part, il
+faut faire bien attention à ce que sa sortie contienne UNIQUEMENT la partie de
+l'empreinte qu'on veut attaquer (si on se trompe sur ce point, le nombre
+d'itérations va exploser).
+
+>>> conseil distributeur
+Il n'est pas nécessaire de posséder un matériel de folie pour trouver la collision.
+Un laptop récent (sur batterie) s'en tire en 15 minutes, avec une implantation en
+python de l'algorithme de recherche de cycle de Brent.

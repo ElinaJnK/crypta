@@ -1,0 +1,110 @@
+GUIDE STRATÉGIQUE POUR LA RÉALISATION DE CLIENTS MUSSH
+======================================================
+
+Le comité technique HUSH de l'University Engineering Task Force (UETF) recommande
+que les implémenteurs de clients MUSSH suivent l'une des des trois stratégies
+suivantes.
+
+
+STRATÉGIE N°1 : RÉALISER UN PROXY
+---------------------------------
+    Il s'agit d'écrire un programme qui implémente le côté "client" de la couche
+    de chiffrement authentifié. Ce programme échange localement des octets avec
+    la couche TELNET (amont) d'une part; il échange des octets sur le réseau
+    avec le côté "serveur" de la couche de chiffrement authentifié d'autre part.
+
+    Pour ce faire :
+    0. L'utilisateur lance le proxy sur la machine cliente.
+    1. Le proxy ouvre un port TCP (disons le port 4242) sur la machine cliente.
+    2. Le proxy se connecte au serveur de l'université sur le port TCP 6025.
+    3. L'utilisateur dirige son client telnet sur le port 4242 de la machine
+       locale.
+    4. Le proxy effectue l'échange de clef, le chiffrement / déchiffrement, de
+       manière transparente pour la couche TELNET en amont.
+
+    
+        Avantage : le proxy peut être réalisé dans n'importe quel langage, avec
+                   n'importe quelle librairie externe. N'importe quel client 
+                   TELNET peut être utilisé.
+    Inconvénient : mise en oeuvre un peu plus lourde côté utilisateur.
+
+    Un proxy open-source en python est disponible dans les bonnes bibliothèques.
+
+
+STRATÉGIE N°2 : ÉCRIRE SON PROPRE CLIENT "FROM SCRATCH"
+-------------------------------------------------------
+    Il s'agit d'implémenter complètement un client pour le protocole TELNET, ainsi
+    que la couche de chiffrement authentifié dans le client "officiel".
+
+        Avantage : simple à utiliser pour l'utilisateur. Flexibilité maximale.
+    Inconvénient : mise en oeuvre lourde. Il faut comprendre le protocole TELNET.
+
+
+STRATÉGIE N°3 : MODIFIER UN CLIENT OPEN-SOURCE
+----------------------------------------------
+    Il s'agit d'implémenter directement la couche de chiffrement authentifié
+    dans le client "officiel". Pour cela, un guide à part est fourni.
+    
+
+        Avantage : plus simple pour l'utilisateur final.
+    Inconvénient : flexibilité moindre ; il faut comprendre le fonctionnement du
+                   client open-source programmer en python, et utiliser la 
+                   librairie twisted.
+
+
+CONSEILS POUR LA MISE AU POINT
+------------------------------
+    La réalisation directe d'un client MUSSH est un exercice de programmation
+    non-trivial. Pour facilier la mise au point, deux protocoles intermédiaires
+    sont implémentés par le serveur de l'université. Leur utilisation dans la vie 
+    de tous les jours n'est PAS recommandée, car ils n'offrent pas la même 
+    sécurité que le protocole MUSSH.
+
+
+PROTOCOLE "TELNET OVER NETSTRINGS"
+----------------------------------
+    La réalisation d'un client pour ce protocole garantit la réalisation
+    correcte de la couche "NETSTRINGS".  Il s'agit d'intercaler un "emballage" en
+    netstrings entre le client et le serveur telnet.  Aucun chiffrement n'est
+    réalisé.  Ce protocole est disponible sur le port 6023 du serveur de 
+    l'université.
+
+                                                               ┌──────────┐
+                                                               │ Terminal │
+                                                               └─────┬────┘
+      Couche TELNET                                                  │
+    ╔════════════════════════════════════════════════════════════════╪═════════╗
+    ║                                                                │         ║
+    ║                                                        ┌───────┴───────┐ ║
+    ║                                                        │ client telnet │ ║
+    ║                                                        └───────┬───────┘ ║
+    ║    Couche NETSTRINGS                                           │         ║
+    ║ ╔══════════════════════════════════════════════════════════════╪═══════╗ ║
+    ║ ║                                                              │       ║ ║
+    ║ ║                                                              │       ║ ║
+    ║ ║ ┌───────────┐                                          ┌─────┴─────┐ ║ ║
+    ║ ║ │ Netstring ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ Netstring │ ║ ║
+    ║ ║ └─────┬─────┘                                          └───────────┘ ║ ║
+    ║ ║       │                                                              ║ ║
+    ║ ║       │                                                              ║ ║
+    ║ ╚═══════╪══════════════════════════════════════════════════════════════╝ ║
+    ║         │                                                                ║
+    ║ ┌───────┴────────┐                                                       ║
+    ║ │ serveur telnet │                                                       ║
+    ║ └───────┬────────┘                                                       ║
+    ║         │                                                                ║
+    ╚═════════╪════════════════════════════════════════════════════════════════╝
+              │
+          ┌───┴───┐
+          │ Shell │
+          └───────┘
+
+    
+PROTOCOLE "ENCRYPTED TELNET OVER NETSTRINGS"
+--------------------------------------------
+    La réalisation d'un client pour ce protocole garantit la réalisation
+    correcte de la couche de chiffrement authentifié. Il s'agit du protocole
+    MUSSH, sauf que l'échange de clef Diffie-Hellman n'est pas effectué. À la
+    place les six clefs symétriques du protocole de chiffrement authentifié sont
+    chacune formées de seize octets zéro. Ce protocole est disponible sur le
+    port 6024 du serveur de l'université.

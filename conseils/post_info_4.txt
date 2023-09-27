@@ -1,0 +1,21 @@
+conseil poste informatique #4
+Il faut essayer de se ramener à une instance de SVP ou de CVP.  En fait, pour cela
+on peut faire un peu comme pour subset-sum.
+
+>>> conseil poste informatique #4
+Il y a beaucoup de vecteurs x tels que xA == b mod p, 
+mais il faudrait en trouver un court.  
+Pour cela, on regarde le réseau engendré par les lignes de la matrice M = [A | I][P | 0]
+où I désigne une matrice identité de taille m x m et Q désigne 
+une matrice de taille n x n avec des p sur la diagonale.  
+Si x est une solution du problème, alors il existe des entiers q_1, ..., q_n tels que (x | q)M = (b | x).  
+Ce vecteur, on aimerait bien le connaître. 
+Et pour cela, on dispose d'un autre qui est proche dans le réseau : c'est (b | 0).
+
+>>> conseil poste informatique #4
+Une difficulté potentielle, c'est qu'on risque de tomber sur un vecteur [ !=b | petit].
+Or on a besoin que ce soit VRAIMENT b à gauche, et pas seulement quelque chose de proche de b.  
+Pour cela, on peut ``mettre le problème à l'échelle''.  
+c'est-à-direqu'on peut chercher un vecteur proche de [lambda*b | 0] dans le réseau engendré 
+par les lignes de [lambda*A | I], avec un entier lambda assez grand.  
+Ceci augmente la ``pénalité'' si on ne tombre pas exactement sur b à gauche, car les vecteurs qui n'ont pas b à gauche sont du coup plus éloignés.
