@@ -1,0 +1,205 @@
+JEUX VIDÉO SUR LE CAMPUS
+========================
+
+Plusieurs études ont démontré que le stress réduisait le niveau académique des
+étudiantes et des étudiants.  Par conséquent, la direction de la faculté des
+sciences a mené plusieurs expériences pour améliorer l'expérience universitaire
+des apprenants.  Des statistiques ont été collectées pour tester l'efficacité de 
+diverses mesures :
+- suppression des examens (p = 0.37, non-concluant)
+- distribution de LSD (p = 0.63, non-concluant)
+- menus améliorés à la cantine (p=0.07, presque significatif)
+- installation d'équipements sportifs en libre accès (p=0.15, peu significatif)
+- installation de bornes d'arcade (p=0.017, statistiquement significatif)
+
+Au vu de ces résultats, l'université a décidé de déployer à grands frais un 
+réseau de bornes d'arcade innovantes.
+
+Pour les utiliser, il faut fournir un "gaming token" (c'est une exigence de la 
+société qui les loue à l'université).  Un distributeur automatique de "gaming 
+token" a lui aussi été installé.
+
+
+Gaming Tokens
+-------------
+Un "gaming token" est constitué de trois champs :
+- Le nom de l'utilisateur
+- Deux chaines X, Y de 16 octets
+- Une signature des deux champs précédents par le distributeur
+
+Pour être valide, un "gaming token" doit :
+- Avoir une signature valide
+- Avoir le bon nom d'utilisateur
+- Il doit exister une clef K de 128 bits telle que :
+  - X est le chiffré de 0x00000000000000000000000000000000 par l'AES avec K
+  - Y est le chiffré de 0xffffffffffffffffffffffffffffffff par l'AES avec K
+
+La clef K doit rester confidentielle --- l'utilisateur n'a pas à la révéler.
+
+
+Distributeur de Gaming Tokens
+-----------------------------
+Le distributeur permet aux utilisateurs d'obtenir un Gaming Token sur
+présentation de leur carte d'étudiant.  Le distributeur certifie que les
+Gaming Tokens sont valides avec forte probabilité, alors que les clefs
+restent confidentielles.  Ceci est réalisé grace à une procédure de 
+"cut-and-choose".  Celle qui est implantée sur le campus est relativement
+classique ; elle garantit que les Gaming Tokens obtenus sont corrects avec
+probabilité supérieure à 99,9%.  Elle incorpore une optimisation commune :
+l'utilisation d'un ``arbre de de PRNGs'' pour réduire les communication de 
+O(n) à O(log n).
+
+Le protocole pour obtenir un "Gaming Token" se déroule en trois phases :
+    
+1. Mise en Gage
+   ### L'utilisateur génère 1024 paires aléatoires K[0], ..., K[1023] avec un 
+   ### "arbre de PRNGs" puis il les met en gage
+   - L'utilisateur choisit une graine <seed>
+   - A[1] <--- <seed>
+   - Pour 1 <= i < 1024 faire:
+     - A[2*i] <--- SHA256(A[i])[0:16]
+     - A[2*i + 1] <--- SHA256(A[i])[16:32]
+   - Pour 0 <= i < 1024 faire:
+     - K[i] <--- A[i + 1024]
+     - X[i] <--- AES(K[i], 0x00000000000000000000000000000000)
+     - Y[i] <--- AES(K[i], 0xffffffffffffffffffffffffffffffff)
+   - Commitment <--- SHA256(X[0] || Y[0] || X[1] || Y[1] || ...)
+                     # empreinte de la concaténation de toute les paires
+   - <commitment> est transmis au distributeur
+
+2. Défi
+   ### Le distributeur choisit UNE paire i (0 <= i < 1024)
+
+3. Ouverture
+   ### L'utilisateur révèle X[i] et Y[i] ainsi que K[j] pour j != i.
+   ### Le distributeur vérifie la correction de X[j] et Y[j] (pour j!= i).
+   ### Pour cela, l'utilisateur révèle le "co-chemin" qui va de la i-ème paire 
+   ###   jusqu'à la racine dans l'arbre de PRNGs.  Ceci permet de vérifieur de
+   ###   recalculer tous les K[j] pour j != i.
+   - X[i] et Y[i] sont transmis au distributeur
+   - path <--- []
+   - j <--- i + 1024
+   - Pour 0 <= k < 10:
+     - Ajouter A[j XOR 1] à la fin de path
+     - j <--- j // 2 
+   - Transmettre <path> au distributeur
+
+EXEMPLE
+-------
+
+Avec :
+
+<seed> = 00112233445566778899aabbccddeeff
+
+On obtient :
+
+A[   1] = 00112233445566778899aabbccddeeff
+A[   2] = a8faed6abbf35c12a4b26e40f6feb19d
+A[   3] = 736d90045c83b9f9a31f638d323e6811
+A[   4] = 3c1acfd8750755dc39c3ed988bec2af9
+A[   5] = 01babca312bbe3227fb2d5888cfe1d37
+A[   6] = 34cfff2978a6636bb4c09f12e83a0dc6
+A[   7] = 5483165ca3819e14ce80b9d2b5e57ba1
+A[   8] = 22e971e1c044854462c40d604937a3bd
+A[   9] = f6fbec857082fd37300df9abebf8724a
+A[  10] = eab3e41cab29c0ce5e2ccc8999d937b9
+...
+A[2044] = cbaaf237dbc50e2d7da9ca86d131bfb9
+A[2045] = 6e77f0dfa843c65772424341ad5efd35
+A[2046] = 5df411bb7fe356cc4dc1ba2e015f4145
+A[2047] = 43607a1c4fa2321cf1e53e951be06eaa
+
+K[   0] = 82b1b3e46a145d137dc78cdd2e6a897b
+X[   0] = 2453edeba9fbe3095b07f1d33fa631d4
+Y[   0] = 3070eaddba8604bd1527a718a8160057
+...
+K[  42] = 21ae7ef7dbe8564633c3cb6fda2ae176
+X[  42] = b48bf89eca0365dfe2dcc8567f44bcc2
+Y[  42] = 1bddf510f4008e9da4bd0db34897bf0e
+...
+K[1023] = 43607a1c4fa2321cf1e53e951be06eaa
+X[1023] = d69c93ce5224175e19fe0d8d0c759549
+Y[1023] = afece0e4b45cd0f7f8853ed5ebcf1cc4
+
+Les données qui sont hachées pour produire la mise en gage occupent 32768 octets :
+
+2453edeba9fbe3095b07f1d33fa631d4 3070eaddba8604bd1527a718a8160057
+3fb55b29afac62d477daff0e50d14366 48ecedf0257de354254e0842de6979a1
+...
+d69c93ce5224175e19fe0d8d0c759549 afece0e4b45cd0f7f8853ed5ebcf1cc4
+
+Et donc
+
+<commitment> = 6fb39c6d7d6c27375e4a23b3ae49925a08ce5047ce75cfc70cfab836f8c12f74
+
+Le ``challenge'' est <i> = 42.
+
+Ouvrir la mise en gage revient à révéler X[42], Y[42], ainsi que le ``co-chemin'' 
+depuis la feuille correspondante de l'arbre de PRNG jusqu'à la racine.  Dans 
+notre exemple, la feuille en question de l'arbre de PRNG porte le numéro 1066.
+Le chemin qui la relie à la racine est : A[i] pour  i = 1066, 533, 266, 133, 66, 
+33, 16, 8, 4, 2.  Donc le ``co-chemin'' (la séquence formée par le frère de 
+chacun des noeuds précédents) est A[j] avec j = 1067, 532, 267, 132, 67, 32, 17,
+9, 5, 3.
+
+
+
+Borne d'arcade ``Pierre-Feuille-Ciseau''
+----------------------------------------
+
+Ces bornes d'arcade high-tech permettent d'évacuer le stress des études en
+jouant de façon équitable contre des intelligences artificielles surentraînées,
+capable d'humilier les meilleurs joueurs humains (une séries d'études
+complémentaires cherche à établir une correlation entre la baisse du niveau de
+stress et l'écrasement de l'égo des participants).
+
+La partie se déroule en plusieurs manches.  Le gagnant de chaque manche marque
+un point.  Le premier qui atteint 32 points a gagné.  Dans une manche, chaque
+joueur choisit un coup (PIERRE, FEUILLE ou CISEAUX).  Celui qui a le meilleur
+coup gagne la manche :
+- PIERRE  bat CISEAUX
+- CISEAUX bat FEUILLE
+- FEUILLE bat PIERRE
+
+Lorsque le numéro de la manche est pair, le joueur commence.  Sinon, c'est
+l'adversaire qui commence.  Celui qui commence transmet une MISE EN GAGE de son
+coup.  L'autre transmet son coup directement.  Celui qui a commencé OUVRE alors
+sa mise en gage.
+
+Un ARBITRE veille au bon déroulement de la partie.  Chaque joueur peut saisir
+l'arbitre en cas de triche averée de la part de l'autre.  Les tricheurs
+subissent une pénalité de 3 points.  Accuser l'autre de triche de manière
+infondée entraîne aussi une pénalité de 3 points.
+
+Un COMMENTATEUR annonce l'issue de chaque manche et les scores actuels.
+
+Le jeu suit un protocole simple : le joueur et l'adversaire échangent des 
+COMMANDES en mode texte.  Une commande commence par un VERBE suivi par un nombre
+variable d'ARGUMENTS (potentiellement zéros).  Les arguments, lorsque ce sont 
+des entiers, doivent être en hexadécimal.  Chaque joueur possède un GROUPE 
+d'entiers modulo p, fixé au début de la partie.  Si aucun groupe n'est spécifié,
+c'est le ``OAKLEY group 14'' (cf. https://www.ietf.org/rfc/rfc3526.txt) qui est
+utilisé.  La mise en gage utilise le chiffrement Elgamal.
+
+Les verbes reconnus sont :
+- GROUP p g q                   # sélectionne le groupe {g**i mod p: 0 <= i < q}
+- PKEY h                             # déclare une clef publique h == g**x mod p
+- COMMIT r c                         # (r, c) est le chiffrement Elgamal du coup
+- MOVE m                                                       # annonce le coup
+- OPEN k                            # révèle l'aléa utilisé dans la mise en gage
+- REFEREE                                    # saisis l'arbitre en cas de triche
+- OK                                             # approuve l'issue de la manche
+
+Le joueur et l'adversaire DOIVENT déclarer leurs clefs publiques dans le 
+prologue, avant le début de la première manche.  Ils PEUVENT déclarer un groupe
+alternatif.  Une manche se déroule de la façon suivante.  Si c'est le tour du
+joueur, il doit envoyer (dans l'ordre) les commandes : 
+- COMMIT
+- MOVE
+- OPEN
+
+Si ce n'est pas son tour, alors il doit envoyer les commandes :
+- MOVE
+- OK | REFEREE
+
+Au niveau de difficulté ``Nightmare'', le verbe GROUP est désactivé.

@@ -1,0 +1,19 @@
+-> flottant de la salle 313
+-> 6.4807406984078602309659674361 (il représente le nombre sqrt(42) avec
+100 bits de précision garantie).
+
+-> corps de nombre de la salle 319
+Il s'agit de QQ[sqrt(43)].  Il est quadratique réel.  Là-dedans, 
+3482 + 531*sqrt(43) est un entier algébrique inversible (d'ailleurs il y en 
+a une infinité d'autres) !
+
+-> salle 321
+-> rapport
+Il est tout gribouillé en rouge.  Il faut dire qu'il contient plein de bêtises.
+Par contre, une annotation attire particulièrement votre attention : elle 
+est en noir et soulignée trois fois.  Elle dit : "passer en 24-25, 4ème".
+
+-> système polynomial
+24*x*y - x^2 - y^2 - x^2*y^2 - 13,
+24*x*z - x^2 - z^2 - x^2*z^2 - 13,
+24*y*z - y^2 - z^2 - y^2*z^2 - 13

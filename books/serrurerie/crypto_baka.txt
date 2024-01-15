@@ -4,56 +4,92 @@ Les serrures BAKA de haute sécurité fonctionnent de la façon suivante.
    cette documentation) sont des dispositifs radio qui communiquent avec la
    serrure (quand elles en sont suffisament proches) via la norme NFC,
    qui est un standard industriel utilisé par presque tous les tags RFID.
-*) Tout le système possède une paire de clefs RSA.
-*) Chaque OUI contient un numéro de série codé sur 32 bits, ainsi que la clef 
-   secrète dans une puce équipée de contre-mesures matérielles qui visent à 
-   en empêcher l'extraction.
+
 *) Les "serrures" (nommées "Mécanismes d'Ouverture Universels à Authentification
-   Interactive Sécurisée" ---MOUAIS--- dans cette documentation) contiennent la 
-   clef publique et sont reliés à un serveur de permission.
-*) Lorsqu'un OUI est mis en contact avec un MOUAIS, le MOUAIS génère une 
-   chaine K de 48 bits aléatoire, puis la chiffre avec la clef publique et 
-   la transmet au OUI.
-*) Le OUI effectue le déchiffrement RSA, récupère K, puis renvoie la paire
-   (numéro de série, HMAC(K, numéro de série)) au MOUAIS.
-*) Le MOUAIS vérifie si MAC est correct. Le cas échéant, il interroge le 
-   serveur de permission pour déterminer si le OUI qui porte ce numéro de 
-   série est autorisé à ouvrir la porte. Dans le cas contraire, il répond...
-   NON (sinon, la porte s'ouvre).
+   Interactive Sécurisée" ---MOUAIS--- dans cette documentation) contiennent des 
+   données publiques uniquement et sont reliés à un serveur de permission.
+
+*) Pour ouvrir une porte, le OUI démontre au MOUAIS la connaissance d'un secret
+   grâce à un protocole à divulgation nulle dû à Gillou et Quisquater en 1988.
+
+*) Les administrateurs du système possèdent une paire de clefs RSA.  La partie
+   publique est notée (N, e) et la partie secrète est notée d.
+   
+*) Chaque utilisateur a une "identité" notée I.  C'est une chaîne de caractères
+   de 48 octets formée de son nom d'utilisateur (tronqué à 48 octets s'il est 
+   trop long ou bourré avec des espaces s'il est trop court).  Les utilisateurs
+   en déduisent une identité redondante de 128 caractères formée par 
+   J := hex(SHA256(I)) || '----------------' || I.
+
+*) Lors de son enrôlement dans le système, chaque utilisateur reçoit un OUI qui
+   contient N, e, J ainsi que S := J**d mod N --- S est le "secret" qui permet
+   au MOUAIS d'authentifier le OUI.
+
+*) Lorsqu'un OUI est mis en contact avec un MOUAIS, le OUI génère un nombre
+   aléatoire r modulo N, calcule x := r**e mod N puis envoie (J, x) au MOUAIS.
+
+*) Le MOUAIS vérifie si J est correctement formé et si l'utilisateur est 
+   autorisé à franchir la porte.  Si ce n'est pas le cas, le MOUAIS répond "NON".
+   Sinon, il choisit un nombre aléatoire c modulo N puis envoie c au OUI.
+
+*) Le OUI calcule y := r * S**c mod N et transfère y au MOUAIS.
+
+*) Le MOUAIS vérifie que y != 0 mod N et que y**e == x * J**c mod N.  Si ce
+   n'est pas le cas, le MOUAIS répond "NON".  Sinon, la porte s'ouvre.
 
 La clef publique du système est :
 
     e = 0x10001
-    N = 0x1ea982ba8f01d5e03163b0409a554484b8e145af768a8d3e66b84c9723d8604a
-          33bd7c52033def81adfaf49beaa4f0f2b3b92370efb88f07665c5c35afdfd947
-          52eacc4cf24ff3b96954ff391abaf39108df0cf11c26567ac2aa408143038ed1
-          1d53172667b95637a7cd3d6bc8972e6a4d7a503730db2af935d3baf8d5a5465d
+    N = 0xba4530d0c5d4094f4557699683a69dcac790935e0d8ed82451920f73b7c05c08
+          73e8a9650020f1a1783e7256237a10e37f27762808e651ac5348a2a7f4d5c073
+          d0350ba88525f96eec5e8974012a0241c0564af6f1e58a1f52c93c7446742deb
+          1815ffcc3d21fb5141d1d765662b14d5089a3a647749ad7be7175f4eed215327
 
-Le chiffrement s'effectue par la méthode RSA directe ("textbook"), sans 
-bourrage, en représentant le message à chiffrer comme un entier m puis en 
-calculant m**e % N. Vu que les messages chiffrés sont de PETITS entiers, le 
-système évite une faille grossière en utilisant e=65537 (en effet, avec e=3 
-le chiffrement serait très facile à défaire vu que le modulo ne jouerait
-aucun role).
+Voici un exemple d'authentification réussie pour le OUI appartenant à un
+utilisateur de test fictif.
 
-Voici un exemple d'authentification réussie pour le OUI portant le numéro
-0 (il a toujours le droit d'ouvrir toutes les portes). 
+I = 'testuser'
+J = '4d27f89bbcaf897ee4133ab05584d51ae88ebe226562f71876ad2c0bf08ba214' + \
+    '----------------                                        testuser'
 
-Le MOUAIS choisit K = 0x554433221100.
+J est représenté par l'entier 
 
-MOUAIS >>> OUI :  
+    0x3464323766383962626361663839376565343133336162303535383464353161
+      6538386562653232363536326637313837366164326330626630386261323134
+      2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d20202020202020202020202020202020
+      2020202020202020202020202020202020202020202020207465737475736572
 
-      1ade43cb907946668eaddbbafc6cde1a0d7b651526c235041334fd9dee126afa
-      374a13aa53f97bb1d57cdff96d20c6588f439f4397d208e3ed73c205aa29a830
-      228c5965bfda8d122bd9e9c46abb9a98ae07bb8bfee66a25806df6756ba55871
-      9ab158202751a4b11694029939558f065c4481607e89138cc9e595937a999675
+On a :
 
-OUI >>> MOUAIS :
-              
-      00000000ed174af8e1e3f205ba9006ade1b9e68b413394570bd06a1bb394c0e77965a985
-      ^^^^^^^^||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-       serial        HMAC-SHA256(0x554433221100, 0x00000000)
+S = 0x68c332cf90d38cb85c1dcd8904cbe09c067262dd9fd7117e27404167c1016c1c
+      43af8f73e6746fc219c2bfbf89191ef1bd82eb97f0ec5a0bddd73f95390f6ac0
+      20faa64f49ac65fe57bc1b958f08867be9e53eec6de64a072c73c8a6cef529f1
+      2b28a371c73055014866142c7dcd27d0645c78f9d6e362747cb22c472579411b
+      
+Le OUI choisi
 
-MOUAIS >>> OUI : 
+r = 0x16e3bd60202b8f3546b8d637e92a4a9b29c23de0ac163ac64d26baeed6cdf8f1
+      2f62a953c57633e6a162a31b59049c5ae0c20009d461ab3130a5de4cc8692bb9
+      c3eefa40e12912beb7fff3df41af442f1707538a765975926f320f189036db98
+      15cba775fe987a7ba9a8ab030f76dd398d7f2454f11ae37336695fc2d97d5d12
 
-      OK
+puis calcule
+
+x = 0x5560d93db277512db0c08ad018c638305c96aac5be9b5398199be208d312c176
+      0381b936d97d155c03e86eb791c244bc3045613a5669dc689a87ddbe1d2b6480
+      696630cb6c05cf9384c96ff390f195e9827d41d9388f3f495bf307a11419c9f2
+      c8ff62036d635a90daebc9faf821c8517b5696d225ab7511337b267584b3ccfb
+
+Le MOUAIS choisi
+
+c = 0x30c3c6edacc41e7754e61d1cea5cac83218ad97743ce3c1b6cbdf32a966f27c7
+      d541f1ba646845ad65707bfe58a57816c1191b210b59cd8ec036599bcecb38e7
+      09f08fd4d7682c56d524085b92b6836672b6d4f1e00396b454828f1ccf4d2e5b
+      d40c00e2a3d3d7dd5ab8bc9e4a00dc71dbefb7f8474828c074dc468ddcafaaa2
+
+Le OUI calcule
+
+y = 0x98907f2b1f8eda96a103657a6bd030cecb205cc37ba803b3aec4ebfe267d471e
+      551d96a63825c33a5ad7faf23395a76b0267ab79c93e058c40fd6368a1f4c828
+      fe298cff281775519f35dab8f2c45b1ad29cbc92935b8906367d9019cbd66046
+      e53cf6bc68c231a4f346897bc6aad06142a55ede06cd90a5adee4cf2e6fcefce
